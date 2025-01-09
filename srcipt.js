@@ -1,48 +1,66 @@
-// Smooth Scrolling Effect
+// Smooth Scrolling Effect with Passive Event Listeners for Better Performance
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
+    anchor.addEventListener('click', function (e) {
         e.preventDefault();
-
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-        });
-    });
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    }, { passive: true });
 });
 
-// Sticky Navigation Bar Highlight
-window.addEventListener('scroll', () => {
+// Sticky Navigation Bar with Throttling for Performance
+let lastKnownScrollPosition = 0;
+let ticking = false;
+
+function updateActiveNav() {
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('section');
-    
+
     let current = '';
-    sections.forEach((section) => {
+    sections.forEach(section => {
         const sectionTop = section.offsetTop;
         const sectionHeight = section.clientHeight;
-        if (pageYOffset >= sectionTop - sectionHeight / 3) {
+        if (window.scrollY >= sectionTop - sectionHeight / 3) {
             current = section.getAttribute('id');
         }
     });
 
-    navLinks.forEach((link) => {
+    navLinks.forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('href') === `#${current}`) {
             link.classList.add('active');
         }
     });
-});
+}
 
-// Add Animation to About Section
-window.addEventListener('scroll', function() {
-    const aboutSection = document.getElementById('about');
-    const aboutPosition = aboutSection.getBoundingClientRect().top;
-    
-    if (aboutPosition < window.innerHeight * 0.75) {
-        aboutSection.classList.add('fadeIn');
+window.addEventListener('scroll', () => {
+    lastKnownScrollPosition = window.scrollY;
+    if (!ticking) {
+        window.requestAnimationFrame(() => {
+            updateActiveNav();
+            ticking = false;
+        });
+        ticking = true;
     }
 });
 
-// About Section Fade-in Effect on Scroll
+// Add Animation to About Section with Intersection Observer
+const aboutSection = document.getElementById('about');
+const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            aboutSection.classList.add('fadeIn');
+            observer.unobserve(aboutSection);
+        }
+    });
+}, { threshold: 0.75 });
+observer.observe(aboutSection);
+
+// Add Styles for About Section Animation
 const style = document.createElement('style');
 style.innerHTML = `
     .fadeIn {
@@ -50,7 +68,6 @@ style.innerHTML = `
         transform: translateY(0);
         transition: opacity 1s ease, transform 1s ease;
     }
-
     #about {
         opacity: 0;
         transform: translateY(50px);
@@ -58,52 +75,79 @@ style.innerHTML = `
 `;
 document.head.appendChild(style);
 
-// Testimonials Slider (Optional)
+// Testimonials Slider with Improved Looping (CSS Transitions)
 let slideIndex = 0;
+const slides = document.querySelectorAll('.testimonial-item');
 
 function showSlides() {
-    const slides = document.querySelectorAll('.testimonial-slide');
-    slides.forEach((slide, index) => {
-        slide.style.display = 'none';
-    });
-
-    slideIndex++;
-    if (slideIndex > slides.length) {
-        slideIndex = 1;
-    }
-
-    slides[slideIndex - 1].style.display = 'block';
+    slides.forEach(slide => slide.classList.remove('active'));
+    slideIndex = (slideIndex + 1) % slides.length;
+    slides[slideIndex].classList.add('active');
     setTimeout(showSlides, 3000); // Change slide every 3 seconds
 }
 
 showSlides();
 
-// Scroll to Top Button (Optional)
-const scrollToTopBtn = document.createElement('button');
-scrollToTopBtn.textContent = '↑';
-scrollToTopBtn.id = 'scrollToTopBtn';
-scrollToTopBtn.style.position = 'fixed';
-scrollToTopBtn.style.bottom = '30px';
-scrollToTopBtn.style.right = '30px';
-scrollToTopBtn.style.padding = '10px';
-scrollToTopBtn.style.borderRadius = '50%';
-scrollToTopBtn.style.backgroundColor = '#0073e6';
-scrollToTopBtn.style.color = 'white';
-scrollToTopBtn.style.border = 'none';
-scrollToTopBtn.style.fontSize = '1.5rem';
-scrollToTopBtn.style.cursor = 'pointer';
-scrollToTopBtn.style.transition = 'background-color 0.3s';
+// Scroll to Top Button with Visibility Toggle
+document.body.insertAdjacentHTML('beforeend', `
+    <button id="scrollToTopBtn" style="position: fixed; bottom: 30px; right: 30px; padding: 10px; border-radius: 50%; background-color: #0073e6; color: white; border: none; font-size: 1.5rem; cursor: pointer; display: none;">↑</button>
+`);
 
-document.body.appendChild(scrollToTopBtn);
+const scrollToTopBtn = document.getElementById('scrollToTopBtn');
 
 scrollToTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-window.onscroll = function() {
-    if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
-        scrollToTopBtn.style.display = 'block';
-    } else {
-        scrollToTopBtn.style.display = 'none';
+window.addEventListener('scroll', () => {
+    scrollToTopBtn.style.display = window.scrollY > 200 ? 'block' : 'none';
+});
+
+// Dropdown Menu for Navigation
+const navMenu = document.querySelector('.nav-menu');
+navMenu.insertAdjacentHTML('beforeend', `
+    <li class="dropdown">
+        <a href="#" class="nav-link">More</a>
+        <ul class="dropdown-content">
+            <li><a href="#testimonials" class="nav-link">Testimonials</a></li>
+            <li><a href="#portfolio" class="nav-link">Portfolio</a></li>
+            <li><a href="#events" class="nav-link">Events</a></li>
+        </ul>
+    </li>
+`);
+
+const dropdownStyles = document.createElement('style');
+dropdownStyles.innerHTML = `
+    .dropdown {
+        position: relative;
+        display: inline-block;
     }
-};
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #fff;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .dropdown:hover .dropdown-content {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+    }
+    .dropdown-content li {
+        list-style: none;
+    }
+    .dropdown-content a {
+        color: #333;
+        padding: 10px 20px;
+        text-decoration: none;
+        display: block;
+    }
+    .dropdown-content a:hover {
+        background-color: #f4f4f4;
+    }
+`;
+document.head.appendChild(dropdownStyles);
